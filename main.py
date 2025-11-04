@@ -12,13 +12,13 @@ from tools import web_search_tool
 
 resume_knowledge = TextFileKnowledgeSource(
     file_paths=[
-        "resume.txt"
+        "resume_ASK.txt"
     ],
     chunk_size=800,
     chunk_overlap=100,
 )
 
-resume_knowledge.storage = KnowledgeStorage(collection_name="jobhunter_resume_kb_v1")
+resume_knowledge.storage = KnowledgeStorage(collection_name="jobhunter_resume_kb_v2")
 
 
 @CrewBase
@@ -68,19 +68,21 @@ class JobHunterCrew:
             config=self.tasks_config['job_extraction_task'],
             output_pydantic=JobList,
         )
-        
+
     @task
     def job_matching_task(self):
         return Task(
             config=self.tasks_config['job_matching_task'],
             output_pydantic=RankedJobList,
+            context=[ self.job_extraction_task() ],  # 추출 결과를 매칭으로 연결
         )
-        
+
     @task
     def job_selection_task(self):
         return Task(
             config=self.tasks_config['job_selection_task'],
             output_pydantic=ChosenJob,
+            context=[ self.job_matching_task() ],    # 랭킹 결과를 선택으로 연결
         )
         
     @task
@@ -119,15 +121,15 @@ class JobHunterCrew:
         return Crew(
             agents=self.agents,
             tasks=self.tasks,
-            knowledge=Knowledge(sources=[resume_knowledge], collection_name="jobhunter_resume_kb_v1"),
+            knowledge=Knowledge(sources=[resume_knowledge], collection_name="jobhunter_resume_kb_v2"),
             verbose=True,
             
         )
         
 JobHunterCrew().crew().kickoff(
     inputs={
-        'level': 'Junior',
+        'level': 'Senior',
         'position': 'Agent Developer',
-        'location': 'South Korea'
+        'location': 'South Korea',
     }
 )
